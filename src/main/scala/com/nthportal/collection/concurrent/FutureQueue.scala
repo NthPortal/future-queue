@@ -2,16 +2,16 @@ package com.nthportal.collection.concurrent
 
 import java.util.concurrent.atomic.AtomicReference
 
+import com.nthportal.collection.concurrent.FutureQueue._
+
 import scala.collection.GenSeq
 import scala.collection.immutable.Queue
 import scala.concurrent.{Future, Promise}
 import scala.language.implicitConversions
 
-final class FutureQueue[A] private(in: Queue[A]) {
+final class FutureQueue[A] private(initialContents: Contents[A]) {
 
-  import FutureQueue._
-
-  private val atomic = new AtomicReference(Contents(elems = in, promises = Queue.empty))
+  private val atomic = new AtomicReference(initialContents)
 
   @inline
   private def contents = atomic.get()
@@ -62,10 +62,10 @@ final class FutureQueue[A] private(in: Queue[A]) {
     p.future
   }
 
-  override def hashCode(): Int = contents.hashCode()
+  override def hashCode(): Int = contentsHashCode(contents)
 
   override def equals(other: Any): Boolean = other match {
-    case that: FutureQueue[_] => this.contents == that.contents
+    case that: FutureQueue[_] => contentsEquals(this.contents, that.contents)
     case _ => false
   }
 
@@ -85,14 +85,21 @@ object FutureQueue {
     implicit def FutureQueueToQueue[A](fq: FutureQueue[A]): Queue[A] = fq.queued
   }
 
-  def apply[A](elems: Queue[A]): FutureQueue[A] = new FutureQueue(elems)
+  private case class Contents[A](elems: Queue[A], promises: Queue[Promise[A]])
+
+  private def contentsEquals(a: Contents[_], b: Contents[_]): Boolean = {
+    a.elems == b.elems && a.promises.length == b.promises.length
+  }
+
+  private def contentsHashCode(c: Contents[_]): Int = (c.elems, c.promises.length).hashCode()
+
+  private val emptyContents = Contents[Nothing](Queue.empty, Queue.empty)
+
+  def apply[A](elems: Queue[A]): FutureQueue[A] = new FutureQueue(Contents(elems = elems, promises = Queue.empty))
 
   def apply[A](): FutureQueue[A] = empty
 
   def apply[A](elems: A*): FutureQueue[A] = apply(Queue(elems: _*))
 
-  def empty[A]: FutureQueue[A] = apply(Queue.empty)
-
-  private case class Contents[A](elems: Queue[A], promises: Queue[Promise[A]])
-
+  def empty[A]: FutureQueue[A] = new FutureQueue(emptyContents.asInstanceOf[Contents[A]])
 }
