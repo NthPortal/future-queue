@@ -1,7 +1,9 @@
 organization := "com.nthportal"
 name := "future-queue"
-version := "1.0.0"
-isSnapshot := false
+val rawVersion = "1.0.1"
+isSnapshot := true
+
+version := s"$rawVersion${if (isSnapshot.value) "-SNAPSHOT" else ""}"
 
 scalaVersion := "2.12.1"
 
