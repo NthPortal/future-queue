@@ -1,10 +1,28 @@
 organization := "com.nthportal"
 name := "future-queue"
-version := "1.0.0-SNAPSHOT"
+version := "1.0.0"
+isSnapshot := false
 
 scalaVersion := "2.12.1"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.1" % Test
 )
-    
+
+publishMavenStyle := true
+licenses := Seq("The Apache License, Version 2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt"))
+homepage := Some(url("https://github.com/NthPortal/future-queue"))
+
+pomExtra :=
+  <scm>
+    <url>https://github.com/NthPortal/future-queue</url>
+    <connection>scm:git:git@github.com:NthPortal/future-queue.git</connection>
+    <developerConnection>scm:git:git@github.com:NthPortal/future-queue.git</developerConnection>
+  </scm>
+  <developers>
+    <developer>
+      <id>NthPortal</id>
+      <name>NthPortal</name>
+      <url>https://github.com/NthPortal</url>
+    </developer>
+  </developers>
