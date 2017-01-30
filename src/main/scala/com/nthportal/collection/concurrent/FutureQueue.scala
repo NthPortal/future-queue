@@ -119,10 +119,20 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     p.future
   }
 
-  override def hashCode(): Int = contentsHashCode(contents)
+  override def hashCode(): Int = contents.hashCode()
 
+  /**
+    * Returns `true` if `this` and `other` are equal.
+    *
+    * `this` and `other` are equal only if `other` is a `FutureQueue`,
+    * and the `FutureQueue`s are equal. Two `FutureQueue`s are equal
+    * if they have the same queued elements, and no [[dequeue promised elements]].
+    *
+    * @param other the other object
+    * @return `true` if `this` and `other` are equal; `false` otherwise
+    */
   override def equals(other: Any): Boolean = other match {
-    case that: FutureQueue[_] => contentsEquals(this.contents, that.contents)
+    case that: FutureQueue[_] => this.contents == that.contents
     case _ => false
   }
 
@@ -154,12 +164,6 @@ object FutureQueue {
   }
 
   private case class Contents[A](elems: Queue[A], promises: Queue[Promise[A]])
-
-  private def contentsEquals(a: Contents[_], b: Contents[_]): Boolean = {
-    a.elems == b.elems && a.promises.length == b.promises.length
-  }
-
-  private def contentsHashCode(c: Contents[_]): Int = (c.elems, c.promises.length).hashCode()
 
   private val emptyContents = Contents[Nothing](Queue.empty, Queue.empty)
 

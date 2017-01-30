@@ -112,7 +112,12 @@ class FutureQueueTest extends FlatSpec with Matchers {
     val fq = FutureQueue.empty[String]
     fq.dequeue
     fq should not equal FutureQueue.empty[String]
-    fq should equal {val other = FutureQueue.empty[Int]; other.dequeue; other}
+
+    val other = FutureQueue.empty[Int]
+    other.dequeue
+
+    fq should not equal other
+    fq.queued should equal (other.queued)
 
     FutureQueue("") should not equal ""
   }
