@@ -191,6 +191,4 @@ object FutureQueue {
     * @return a FutureQueue containing the specified elements
     */
   def apply[A](elems: A*): FutureQueue[A] = apply(Queue(elems: _*))
-
-
 }
