@@ -2,7 +2,7 @@ organization := "com.nthportal"
 name := "future-queue"
 description := "A queue for Scala which returns Futures for elements which may not have been enqueued yet."
 
-val rawVersion = "1.0.2"
+val rawVersion = "1.1.0"
 isSnapshot := true
 version := rawVersion + {if (isSnapshot.value) "-SNAPSHOT" else ""}
 
