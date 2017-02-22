@@ -4,6 +4,7 @@ A queue for Scala which returns Futures for elements which may not have been enq
 [![Build Status](https://travis-ci.org/NthPortal/future-queue.svg?branch=master)](https://travis-ci.org/NthPortal/future-queue)
 [![Coverage Status](https://coveralls.io/repos/github/NthPortal/future-queue/badge.svg?branch=master)](https://coveralls.io/github/NthPortal/future-queue?branch=master)
 [![Maven Central](https://img.shields.io/maven-central/v/com.nthportal/future-queue_2.12.svg)](https://mvnrepository.com/artifact/com.nthportal/future-queue_2.12)
+[![Versioning](https://img.shields.io/badge/versioning-semver%202.0.0-blue.svg)](http://semver.org/spec/v2.0.0.html)
 
 ## Add as a Dependency
 
