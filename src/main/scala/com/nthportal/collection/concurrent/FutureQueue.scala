@@ -106,7 +106,7 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     *
     * @return Returns a Future (eventually) containing the next element in this queue
     */
-  def dequeue: Future[A] = {
+  def dequeue(): Future[A] = {
     val p = Promise[A]()
 
     val cs = atomic.getAndUpdate(unaryOp(c => {

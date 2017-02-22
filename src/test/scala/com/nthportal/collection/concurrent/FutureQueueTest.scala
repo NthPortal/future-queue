@@ -3,7 +3,7 @@ package com.nthportal.collection.concurrent
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.immutable.Queue
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 class FutureQueueTest extends FlatSpec with Matchers {
@@ -59,7 +59,7 @@ class FutureQueueTest extends FlatSpec with Matchers {
     val fq = FutureQueue.empty[String]
     val list = List("some", "test", "strings")
 
-    val futures = List.fill(3) {fq.dequeue}
+    val futures = List.fill(3) {fq.dequeue()}
     fq ++= list
 
     futures.foreach(_.isCompleted should be(true))
@@ -70,11 +70,11 @@ class FutureQueueTest extends FlatSpec with Matchers {
     val s = "test"
     val fq = FutureQueue(s)
 
-    val f1 = fq.dequeue
+    val f1 = fq.dequeue()
     f1.isCompleted should be(true)
     Await.result(f1, Duration.Zero) should equal(s)
 
-    val f2 = fq.dequeue
+    val f2 = fq.dequeue()
     f2.isCompleted should be(false)
 
     fq.enqueue(s)
@@ -91,15 +91,15 @@ class FutureQueueTest extends FlatSpec with Matchers {
     fq should have size 1
     fq.promiseCount should be(0)
 
-    fq.dequeue
+    fq.dequeue()
     fq should have size 0
     fq.promiseCount should be(0)
 
-    fq.dequeue
+    fq.dequeue()
     fq should have size -1
     fq.promiseCount should be(1)
 
-    fq.dequeue
+    fq.dequeue()
     fq should have size -2
     fq.promiseCount should be(2)
   }
@@ -110,11 +110,11 @@ class FutureQueueTest extends FlatSpec with Matchers {
     FutureQueue("") should not equal FutureQueue.empty[String]
 
     val fq = FutureQueue.empty[String]
-    fq.dequeue
+    fq.dequeue()
     fq should not equal FutureQueue.empty[String]
 
     val other = FutureQueue.empty[Int]
-    other.dequeue
+    other.dequeue()
 
     fq should not equal other
     fq.queued should equal (other.queued)
@@ -130,8 +130,8 @@ class FutureQueueTest extends FlatSpec with Matchers {
     list.foreach(e => s should include(e))
 
     val fq = FutureQueue.empty
-    fq.dequeue
-    fq.dequeue
+    fq.dequeue()
+    fq.dequeue()
     fq.toString should include(fq.promiseCount.toString)
   }
 }
