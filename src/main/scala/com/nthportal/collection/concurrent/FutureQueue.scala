@@ -7,8 +7,9 @@ import com.nthportal.collection.concurrent._future_queue._
 
 import scala.collection.GenSeq
 import scala.collection.immutable.Queue
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
+import scala.util.Success
 
 /**
   * A queue which returns Futures for elements which may not have been enqueued yet.
@@ -106,7 +107,7 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     *
     * @return Returns a Future (eventually) containing the next element in this queue
     */
-  def dequeue: Future[A] = {
+  def dequeue(): Future[A] = {
     val p = Promise[A]()
 
     val cs = atomic.getAndUpdate(unaryOp(c => {
@@ -196,4 +197,41 @@ object FutureQueue {
     * @return a FutureQueue containing the specified elements
     */
   def apply[A](elems: A*): FutureQueue[A] = apply(Queue(elems: _*))
+
+  /**
+    * Creates a new `FutureQueue` ('aggregate queue') which aggregates
+    * the elements added to the specified `FutureQueue`s ('input queues').
+    *
+    * Elements added to the input queues are dequeued from them and enqueued
+    * to the aggregate queue. Consequently, one SHOULD NOT dequeue elements
+    * directly from the input queues; doing so may result in only some elements
+    * being enqueued into the aggregate queue, in an inconsistent fashion.
+    *
+    * Ordering is guaranteed to be maintained for elements added to a single
+    * input queue. However, ordering of elements added to different input queues
+    * is not guaranteed; they are enqueued into the aggregate queue roughly in the
+    * order that they are enqueued into the input queues.
+    *
+    * @param queues   the `FutureQueue`s to aggregate into a single `FutureQueue`
+    * @param executor the [[ExecutionContext]] used to aggregate the queues
+    * @tparam A the type of the resulting `FutureQueue`
+    * @return a `FutureQueue` which aggregates elements added to the specified
+    *         `FutureQueue`s
+    */
+  def aggregate[A](queues: FutureQueue[_ <: A]*)(implicit executor: ExecutionContext): FutureQueue[A] = {
+    val res = empty[A]
+
+    queues.foreach(queue => {
+      /* @unchecked because Futures returned from a FutureQueue never fail */
+      @inline
+      def loop(future: Future[A]): Unit = future.onComplete(t => (t: @unchecked) match {
+        case Success(a) =>
+          res.enqueue(a)
+          loop(queue.dequeue())
+      })
+      loop(queue.dequeue())
+    })
+
+    res
+  }
 }
