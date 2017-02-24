@@ -1,5 +1,6 @@
 package com.nthportal.collection.concurrent
 
+import com.nthportal.testing.concurrent.ManualExecutor
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.immutable.Queue
@@ -25,6 +26,48 @@ class FutureQueueTest extends FlatSpec with Matchers {
     FutureQueue(q).queued should be theSameInstanceAs q
 
     FutureQueue("some", "elements").queued should equal(q)
+  }
+
+  it should "aggregate FutureQueues" in {
+    val executor = ManualExecutor()
+
+    import executor.Implicits._
+
+    val q1 = FutureQueue.empty[String]
+    val q2 = FutureQueue.empty[String]
+    val q3 = FutureQueue.empty[String]
+    val aggregate = FutureQueue.aggregate(q1, q2, q3)
+
+    q1 += "q1"
+    executor.executeAll()
+    aggregate.size should be (1)
+    q1.promiseCount should be (1)
+    Await.result(aggregate.dequeue(), Duration.Zero) should be ("q1")
+    aggregate.size should be(0)
+
+    q2 += "q2"
+    q3 += "q3"
+    executor.executeAll()
+    aggregate.size should be (2)
+    q2.promiseCount should be (1)
+    q3.promiseCount should be (1)
+    val res1 = Await.result(aggregate.dequeue(), Duration.Zero)
+    val res2 = Await.result(aggregate.dequeue(), Duration.Zero)
+    res1 should (be ("q2") or be ("q3"))
+    res2 should (be ("q2") or be ("q3"))
+    res1 should not equal res2
+    aggregate.size should be (0)
+
+    aggregate += "0"
+    q1 ++= Seq("1", "2")
+    aggregate.size should be (1)
+    executor.executeAll()
+    aggregate.size should be (3)
+    q1.promiseCount should be (1)
+    Await.result(aggregate.dequeue(), Duration.Zero) should be ("0")
+    Await.result(aggregate.dequeue(), Duration.Zero) should be ("1")
+    Await.result(aggregate.dequeue(), Duration.Zero) should be ("2")
+    aggregate.size should be(0)
   }
 
   behavior of "implicit conversion from FutureQueue to Queue"

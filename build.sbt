@@ -14,7 +14,8 @@ crossScalaVersions := Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "3.0.+" % Test
+  "org.scalatest" %% "scalatest" % "3.0.+" % Test,
+  "com.nthportal" %% "testing-utils" % "1.+" % Test
 )
 
 publishTo := {
