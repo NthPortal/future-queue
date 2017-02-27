@@ -4,6 +4,7 @@ import com.nthportal.testing.concurrent.ManualExecutor
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.immutable.Queue
+import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
@@ -13,7 +14,7 @@ class FutureQueueTest extends FlatSpec with Matchers {
 
   behavior of "FutureQueue companion object"
 
-  it should "create an empty FutureQueue" in {
+  it should "create an empty `FutureQueue`" in {
     val fq = FutureQueue.empty[Any]
     fq should have size 0
     fq.queued shouldBe empty
@@ -21,14 +22,14 @@ class FutureQueueTest extends FlatSpec with Matchers {
     fq should equal(FutureQueue[Nothing]())
   }
 
-  it should "create a FutureQueue" in {
+  it should "create a `FutureQueue`" in {
     val q = Queue("some", "elements")
     FutureQueue(q).queued should be theSameInstanceAs q
 
     FutureQueue("some", "elements").queued should equal(q)
   }
 
-  it should "aggregate FutureQueues" in {
+  it should "aggregate `FutureQueue`s" in {
     val executor = ManualExecutor()
 
     import executor.Implicits._
@@ -145,6 +146,58 @@ class FutureQueueTest extends FlatSpec with Matchers {
     fq.dequeue()
     fq should have size -2
     fq.promiseCount should be(2)
+  }
+
+  it should "drain continually" in {
+    val executor = ManualExecutor()
+
+    import executor.Implicits._
+
+    val fq = FutureQueue.empty[String]
+    val mq = mutable.Queue.empty[String]
+
+    fq drainContinually {mq += _}
+    fq.promiseCount should be (1)
+
+    fq += "1"
+    executor.executeAll()
+    mq should have length 1
+    mq.dequeue() should be ("1")
+    fq.promiseCount should be (1)
+
+    fq ++= Seq("2", "3")
+    executor.executeAll()
+    mq should have length 2
+    mq.dequeue() should be ("2")
+    mq.dequeue() should be ("3")
+    fq.promiseCount should be (1)
+  }
+
+  it should "drain to another `FutureQueue`" in {
+    val executor = ManualExecutor()
+
+    import executor.Implicits._
+
+    val q1 = FutureQueue.empty[String]
+    val q2 = FutureQueue.empty[String]
+
+    q1 drainToContinually q2
+    q1.promiseCount should be (1)
+
+    q1 += "1"
+    executor.executeAll()
+    q2 should have size 1
+    Await.result(q2.dequeue(), Duration.Zero) should be ("1")
+    q1.promiseCount should be (1)
+
+    q1 ++= Seq("2", "3")
+    executor.executeAll()
+    q2 should have size 2
+    Await.result(q2.dequeue(), Duration.Zero) should be ("2")
+    Await.result(q2.dequeue(), Duration.Zero) should be ("3")
+    q1.promiseCount should be (1)
+
+    an [IllegalArgumentException] should be thrownBy {q2 drainToContinually q2}
   }
 
   it should "evaluate equality properly" in {
