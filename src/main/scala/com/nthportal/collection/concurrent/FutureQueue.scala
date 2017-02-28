@@ -201,8 +201,15 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
 object FutureQueue {
 
   /**
-    * An object containing an implicit conversion from [[FutureQueue]] to [[Queue]].
+    * An object containing an implicit conversion from [[FutureQueue]] to [[Queue]]
+    * (deprecated).
+    *
+    * The implicit conversion is deprecated because it hides the mutability of the
+    * underlying `FutureQueue`. It could lead to invoking multiple methods from
+    * `Queue` on a `FutureQueue` and expecting them to be invoked on the same
+    * collection, which is not guaranteed.
     */
+  @deprecated("convert to Queue explicitly instead", since = "1.1.0")
   object Implicits {
     /**
       * An implicit conversion from [[FutureQueue]] to [[Queue]].

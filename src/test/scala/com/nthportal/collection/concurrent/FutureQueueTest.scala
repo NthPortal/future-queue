@@ -71,7 +71,7 @@ class FutureQueueTest extends FlatSpec with Matchers {
     aggregate.size should be(0)
   }
 
-  behavior of "implicit conversion from FutureQueue to Queue"
+  behavior of "implicit conversion from FutureQueue to Queue (deprecated)"
 
   it should "convert properly" in {
     import FutureQueue.Implicits._
