@@ -2,7 +2,7 @@ organization := "com.nthportal"
 name := "future-queue"
 description := "A queue for Scala which returns Futures for elements which may not have been enqueued yet."
 
-val rawVersion = "1.0.1"
+val rawVersion = "1.1.0"
 isSnapshot := false
 version := rawVersion + {if (isSnapshot.value) "-SNAPSHOT" else ""}
 
@@ -14,7 +14,8 @@ crossScalaVersions := Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "3.0.1" % Test
+  "org.scalatest" %% "scalatest" % "3.0.+" % Test,
+  "com.nthportal" %% "testing-utils" % "1.+" % Test
 )
 
 publishTo := {

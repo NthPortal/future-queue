@@ -7,7 +7,7 @@ import com.nthportal.collection.concurrent._future_queue._
 
 import scala.collection.GenSeq
 import scala.collection.immutable.Queue
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
 
 /**
@@ -106,7 +106,7 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     *
     * @return Returns a Future (eventually) containing the next element in this queue
     */
-  def dequeue: Future[A] = {
+  def dequeue(): Future[A] = {
     val p = Promise[A]()
 
     val cs = atomic.getAndUpdate(unaryOp(c => {
@@ -117,6 +117,55 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     if (cs.elems.nonEmpty) p.success(cs.elems.head)
 
     p.future
+  }
+
+  /**
+    * Dequeues elements from this queue as they are added, and applies them to the
+    * specified function.
+    *
+    * One SHOULD NOT dequeue elements from this queue after calling this method or
+    * [[drainToContinually]]; doing so will result in only some elements being
+    * applied to the specified function, in an inconsistent fashion. For the same
+    * reason, neither this method nor [[drainToContinually]] (nor
+    * [[FutureQueue.aggregate]] with `this` as an argument) should be invoked after
+    * calling this method.
+    *
+    * @param f        a function executed with each element added to this queue
+    *                 (forever); its return value is ignored
+    * @param executor the [[ExecutionContext]] used to execute the callbacks
+    * @tparam B only used to accept any return type from the callback function
+    */
+  def drainContinually[B](f: A => B)(implicit executor: ExecutionContext): Unit = {
+    @inline
+    def loop(future: Future[A]): Unit = future.onComplete { t =>
+      f(t.get)
+      loop(dequeue())
+    }
+
+    loop(dequeue())
+  }
+
+  /**
+    * Dequeues elements from this queue as they are added, and enqueues them to the
+    * specified `FutureQueue`.
+    *
+    * One SHOULD NOT dequeue elements from this queue after calling this method or
+    * [[drainContinually]]; doing so will result in only some elements being
+    * enqueued to the specified queue, in an inconsistent fashion. For the same
+    * reason, neither this method nor [[drainContinually]] (nor
+    * [[FutureQueue.aggregate]] with `this` as an argument) should be invoked after
+    * calling this method.
+    *
+    * @param other    the queue to which to enqueue elements added to this queue
+    * @param executor the [[ExecutionContext]] used to enqueue elements to the other
+    *                 queue
+    * @tparam B the type of the elements in the other queue
+    * @throws IllegalArgumentException if the specified `FutureQueue` is `this`
+    */
+  @throws[IllegalArgumentException]
+  def drainToContinually[B >: A](other: FutureQueue[B])(implicit executor: ExecutionContext): Unit = {
+    require(this ne other, "Cannot drain a queue to itself")
+    drainContinually(other.enqueue)
   }
 
   override def hashCode(): Int = contents.hashCode()
@@ -152,8 +201,15 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
 object FutureQueue {
 
   /**
-    * An object containing an implicit conversion from [[FutureQueue]] to [[Queue]].
+    * An object containing an implicit conversion from [[FutureQueue]] to [[Queue]]
+    * (deprecated).
+    *
+    * The implicit conversion is deprecated because it hides the mutability of the
+    * underlying `FutureQueue`. It could lead to invoking multiple methods from
+    * `Queue` on a `FutureQueue` and expecting them to be invoked on the same
+    * collection, which is not guaranteed.
     */
+  @deprecated("convert to Queue explicitly instead", since = "1.1.0")
   object Implicits {
     /**
       * An implicit conversion from [[FutureQueue]] to [[Queue]].
@@ -196,4 +252,36 @@ object FutureQueue {
     * @return a FutureQueue containing the specified elements
     */
   def apply[A](elems: A*): FutureQueue[A] = apply(Queue(elems: _*))
+
+  /**
+    * Creates a new `FutureQueue` ('aggregate queue') to which all of the
+    * specified `FutureQueue`s ('input queues') are
+    * [[FutureQueue.drainToContinually drained]].
+    *
+    * Elements added to the input queues are dequeued from them and enqueued
+    * to the aggregate queue. Consequently, one SHOULD NOT invoke
+    * [[FutureQueue.dequeue dequeue]],
+    * [[FutureQueue.drainContinually drainContinually]] or
+    * [[FutureQueue.drainToContinually drainToContinually]] on the input queues,
+    * or this method with any of the input queues as an argument, after calling
+    * this method; doing so will result in only some elements being enqueued
+    * to the aggregate queue, in an inconsistent fashion.
+    *
+    * Ordering is guaranteed to be maintained for elements added to a single
+    * input queue relative to each other. However, ordering of elements added
+    * to different input queues is not guaranteed relative to each other; they
+    * are enqueued into the aggregate queue only roughly in the order that they
+    * are enqueued into the input queues.
+    *
+    * @param queues   the `FutureQueue`s to aggregate into a single `FutureQueue`
+    * @param executor the [[ExecutionContext]] used to aggregate the queues
+    * @tparam A the type of the resulting `FutureQueue`
+    * @return a `FutureQueue` which aggregates elements added to the specified
+    *         `FutureQueue`s
+    */
+  def aggregate[A](queues: FutureQueue[_ <: A]*)(implicit executor: ExecutionContext): FutureQueue[A] = {
+    val res = empty[A]
+    queues.foreach(_.drainToContinually(res))
+    res
+  }
 }
