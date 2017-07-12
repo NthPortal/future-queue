@@ -88,12 +88,18 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     * @param xs the elements to append
     */
   def enqueue(xs: A*): Unit = {
-    val cs = atomic.getAndUpdate(unaryOp(c => {
-      c.copy(elems = c.elems ++ xs.drop(c.promises.length), promises = c.promises.drop(xs.length))
-    }))
+    val len = xs.length
+    if (len == 1) this += xs.head
+    else if (len > 1) {
+      val cs = atomic.getAndUpdate(unaryOp(c => {
+        c.copy(
+          elems = c.elems ++ xs.view.drop(c.promises.length),
+          promises = c.promises.drop(len))
+      }))
 
-    cs.promises.zip(xs)
-      .map { case (p, e) => p.success(e) }
+      cs.promises.zip(xs)
+        .map { case (p, e) => p.success(e) }
+    }
   }
 
   /**
