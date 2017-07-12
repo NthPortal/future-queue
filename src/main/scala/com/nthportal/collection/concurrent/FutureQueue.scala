@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicReference
 import com.nthportal.collection.concurrent.FutureQueue._
 import com.nthportal.collection.concurrent._future_queue._
 
-import scala.collection.GenSeq
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
@@ -52,27 +51,43 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
   def queued: Queue[A] = contents.elems
 
   /**
-    * Appends an element to this queue.
+    * Append an element to this queue.
     *
     * @param a the element to append
+    * @return this queue
     */
-  def enqueue(a: A): Unit = {
+  def +=(a: A): FutureQueue.this.type = {
     val cs = atomic.getAndUpdate(unaryOp(c => {
       if (c.promises.nonEmpty) c.copy(promises = c.promises.tail)
       else c.copy(elems = c.elems :+ a)
     }))
 
     if (cs.promises.nonEmpty) cs.promises.head.success(a)
+
+    this
   }
 
   /**
-    * Appends elements to this queue.
+    * Append elements to this queue.
+    *
+    * @param xs the elements to append
+    * @return this queue
+    */
+  def ++=(xs: TraversableOnce[A]): FutureQueue.this.type = {enqueue(xs.toSeq: _*); this}
+
+  /**
+    * Append an element to this queue.
+    *
+    * @param a the element to append
+    */
+  def enqueue(a: A): Unit = this += a
+
+  /**
+    * Append elements to this queue.
     *
     * @param xs the elements to append
     */
-  def enqueue[B <: A](xs: TraversableOnce[B]): Unit = enqueueImpl(xs.to[GenSeq])
-
-  private def enqueueImpl[B <: A](xs: GenSeq[B]): Unit = {
+  def enqueue(xs: A*): Unit = {
     val cs = atomic.getAndUpdate(unaryOp(c => {
       c.copy(elems = c.elems ++ xs.drop(c.promises.length), promises = c.promises.drop(xs.length))
     }))
@@ -82,20 +97,12 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
   }
 
   /**
-    * Appends an element to this queue.
-    *
-    * @param a the element to append
-    * @return this queue
-    */
-  def +=(a: A): FutureQueue[A] = {enqueue(a); this}
-
-  /**
-    * Appends elements to this queue.
+    * Append elements to this queue.
     *
     * @param xs the elements to append
-    * @return this queue
     */
-  def ++=[B <: A](xs: TraversableOnce[B]): FutureQueue[A] = {enqueue(xs); this}
+  @deprecated("use `enqueue(A*)` or `++=` instead", since = "1.2.0")
+  def enqueue(xs: TraversableOnce[A]): Unit = enqueue(xs.toSeq: _*)
 
   /**
     * Returns a [[Future]] containing the next element, and removes that element
