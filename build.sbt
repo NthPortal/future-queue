@@ -4,7 +4,7 @@ description := "A queue for Scala which returns Futures for elements which may n
 
 val rawVersion = "1.2.0"
 isSnapshot := true
-version := rawVersion + {if (isSnapshot.value) "-SNAPSHOT" else ""}
+version := rawVersion + { if (isSnapshot.value) "-SNAPSHOT" else "" }
 
 scalaVersion := "2.12.1"
 crossScalaVersions := Seq(
@@ -17,6 +17,16 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.+" % Test,
   "com.nthportal" %% "testing-utils" % "1.+" % Test
 )
+
+scalacOptions ++= {
+  if (isSnapshot.value) Seq()
+  else scalaVersion.value split '.' map { _.toInt } match {
+    case Array(2, 11, _) => Seq("-optimize")
+    case Array(2, 12, patch) if patch <= 2 => Seq("-opt:l:project")
+    case Array(2, 12, patch) if patch > 2 => Seq("-opt:l:inline")
+    case _ => Seq()
+  }
+}
 
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
