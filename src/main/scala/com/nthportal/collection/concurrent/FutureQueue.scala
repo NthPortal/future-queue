@@ -137,9 +137,9 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     * specified function.
     *
     * One SHOULD NOT dequeue elements from this queue after calling this method or
-    * [[drainToContinually]]; doing so will result in only some elements being
+    * [[drainContinuallyTo]]; doing so will result in only some elements being
     * applied to the specified function, in an inconsistent fashion. For the same
-    * reason, neither this method nor [[drainToContinually]] (nor
+    * reason, neither this method nor [[drainContinuallyTo]] (nor
     * [[FutureQueue.aggregate]] with `this` as an argument) should be invoked after
     * calling this method.
     *
@@ -176,10 +176,16 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     * @throws IllegalArgumentException if the specified `FutureQueue` is `this`
     */
   @throws[IllegalArgumentException]
-  def drainToContinually[B >: A](other: FutureQueue[B])(implicit executor: ExecutionContext): Unit = {
+  def drainContinuallyTo[B >: A](other: FutureQueue[B])(implicit executor: ExecutionContext): Unit = {
     require(this ne other, "Cannot drain a queue to itself")
     drainContinually(other.enqueue)
   }
+
+  /**
+    * @see [[drainContinuallyTo]]
+    */
+  @deprecated("use `drainContinuallyTo` instead", since = "1.2.0")
+  def drainToContinually[B >: A](other: FutureQueue[B])(implicit executor: ExecutionContext): Unit = drainContinuallyTo(other)
 
   override def hashCode(): Int = contents.hashCode()
 
@@ -269,13 +275,13 @@ object FutureQueue {
   /**
     * Creates a new `FutureQueue` ('aggregate queue') to which all of the
     * specified `FutureQueue`s ('input queues') are
-    * [[FutureQueue.drainToContinually drained]].
+    * [[FutureQueue.drainContinuallyTo drained]].
     *
     * Elements added to the input queues are dequeued from them and enqueued
     * to the aggregate queue. Consequently, one SHOULD NOT invoke
     * [[FutureQueue.dequeue dequeue]],
     * [[FutureQueue.drainContinually drainContinually]] or
-    * [[FutureQueue.drainToContinually drainToContinually]] on the input queues,
+    * [[FutureQueue.drainContinuallyTo drainToContinually]] on the input queues,
     * or this method with any of the input queues as an argument, after calling
     * this method; doing so will result in only some elements being enqueued
     * to the aggregate queue, in an inconsistent fashion.
@@ -294,7 +300,7 @@ object FutureQueue {
     */
   def aggregate[A](queues: FutureQueue[_ <: A]*)(implicit executor: ExecutionContext): FutureQueue[A] = {
     val res = empty[A]
-    queues.foreach(_.drainToContinually(res))
+    queues.foreach(_.drainContinuallyTo(res))
     res
   }
 }
