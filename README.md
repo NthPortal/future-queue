@@ -66,18 +66,17 @@ import com.nthportal.collection.concurrent.FutureQueue
 val queue = FutureQueue.empty[String]
 
 // Add an element
-queue.enqueue("a string")
-// or
 queue += "a string"
+// or
+queue.enqueue("a string")
 
-// Add multiple individual elements
+// Add multiple elements
 queue += "string 1" += "string 2" += "another string"
+// or
+queue.enqueue("string 1", "string 2", "another string")
 
 // Add a collection of elements (TraversableOnce)
-val elements = Seq("some", "strings", "and", "then", "more", "strings")
-queue.enqueue(elements)
-// or
-queue ++= elements
+queue ++= Seq("some", "strings", "and", "then", "more", "strings")
 
 // Remove a Future which will contain an element once one is added to the queue
 val future = queue.dequeue()
@@ -98,7 +97,7 @@ q1 += "this string will be removed and printed by the global ExecutionContext"
 // Automatically add elements to another FutureQueue
 val q2 = FutureQueue("a string")
 val sink = FutureQueue.empty[Any]
-q2.drainToContinually(sink)
+q2.drainContinuallyTo(sink)
 q2 += "this string will automatically be removed and added to `sink`"
 
 // Aggregate multiple FutureQueues into a single one

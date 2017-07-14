@@ -19,14 +19,14 @@ class FutureQueueTest extends FlatSpec with Matchers {
     fq should have size 0
     fq.queued shouldBe empty
 
-    fq should equal(FutureQueue[Nothing]())
+    fq shouldEqual FutureQueue[Nothing]()
   }
 
   it should "create a `FutureQueue`" in {
     val q = Queue("some", "elements")
     FutureQueue(q).queued should be theSameInstanceAs q
 
-    FutureQueue("some", "elements").queued should equal(q)
+    FutureQueue("some", "elements").queued shouldEqual q
   }
 
   it should "aggregate `FutureQueue`s" in {
@@ -41,73 +41,83 @@ class FutureQueueTest extends FlatSpec with Matchers {
 
     q1 += "q1"
     executor.executeAll()
-    aggregate.size should be (1)
-    q1.promiseCount should be (1)
-    Await.result(aggregate.dequeue(), Duration.Zero) should be ("q1")
-    aggregate.size should be(0)
+    aggregate should have size 1
+    q1.promiseCount shouldBe 1
+    Await.result(aggregate.dequeue(), Duration.Zero) shouldBe "q1"
+    aggregate should have size 0
 
     q2 += "q2"
     q3 += "q3"
     executor.executeAll()
-    aggregate.size should be (2)
-    q2.promiseCount should be (1)
-    q3.promiseCount should be (1)
+    aggregate should have size 2
+    q2.promiseCount shouldBe 1
+    q3.promiseCount shouldBe 1
     val res1 = Await.result(aggregate.dequeue(), Duration.Zero)
     val res2 = Await.result(aggregate.dequeue(), Duration.Zero)
-    res1 should (be ("q2") or be ("q3"))
-    res2 should (be ("q2") or be ("q3"))
+    res1 should (be("q2") or be("q3"))
+    res2 should (be("q2") or be("q3"))
     res1 should not equal res2
-    aggregate.size should be (0)
+    aggregate should have size 0
 
     aggregate += "0"
     q1 ++= Seq("1", "2")
-    aggregate.size should be (1)
+    aggregate should have size 1
     executor.executeAll()
-    aggregate.size should be (3)
-    q1.promiseCount should be (1)
-    Await.result(aggregate.dequeue(), Duration.Zero) should be ("0")
-    Await.result(aggregate.dequeue(), Duration.Zero) should be ("1")
-    Await.result(aggregate.dequeue(), Duration.Zero) should be ("2")
-    aggregate.size should be(0)
-  }
-
-  behavior of "implicit conversion from FutureQueue to Queue (deprecated)"
-
-  it should "convert properly" in {
-    import FutureQueue.Implicits._
-
-    val q = Queue("some", "elements")
-    val fq = FutureQueue(q)
-
-    fq.seq should be theSameInstanceAs q
+    aggregate should have size 3
+    q1.promiseCount shouldBe 1
+    Await.result(aggregate.dequeue(), Duration.Zero) shouldBe "0"
+    Await.result(aggregate.dequeue(), Duration.Zero) shouldBe "1"
+    Await.result(aggregate.dequeue(), Duration.Zero) shouldBe "2"
+    aggregate should have size 0
   }
 
   behavior of "FutureQueue"
 
   it should "enqueue a single element" in {
     val fq = FutureQueue.empty[String]
-    val s = "test"
-    (fq += s).queued should contain(s)
+
+    val s1 = "test1"
+    (fq += s1).queued should contain(s1)
     fq should have size 1
+
+    val s2 = "test2"
+    fq.enqueue(s2)
+    fq.queued should contain(s2)
+    fq should have size 2
   }
 
   it should "enqueue multiple elements" in {
-    val fq = FutureQueue.empty[String]
     val list = List("some", "test", "strings")
 
-    (fq ++= list).queued should equal(list)
-    fq should have size list.size
+    val fq1 = FutureQueue.empty[String]
+    (fq1 ++= list).queued shouldEqual list
+    fq1 should have size list.size
+
+    val fq2 = FutureQueue.empty[String]
+    fq2.enqueue(list: _*)
+    fq2.queued shouldEqual list
+    fq2 should have size list.size
+
+    val fq3 = FutureQueue.empty[String]
+    val singletonList = List("test")
+    fq3.enqueue(singletonList: _*)
+    fq3.queued shouldEqual singletonList
+    fq3 should have size singletonList.size
+
+    val fq4 = FutureQueue.empty
+    fq4.enqueue(List(): _*)
+    fq4 should have size 0
   }
 
   it should "keep multiple promises" in {
     val fq = FutureQueue.empty[String]
     val list = List("some", "test", "strings")
 
-    val futures = List.fill(3) {fq.dequeue()}
+    val futures = List.fill(3) { fq.dequeue() }
     fq ++= list
 
-    futures.foreach(_.isCompleted should be(true))
-    futures.map {Await.result(_, Duration.Zero)} should equal(list)
+    futures.foreach(_.isCompleted shouldBe true)
+    futures.map { Await.result(_, Duration.Zero) } shouldEqual list
   }
 
   it should "dequeue elements" in {
@@ -115,37 +125,37 @@ class FutureQueueTest extends FlatSpec with Matchers {
     val fq = FutureQueue(s)
 
     val f1 = fq.dequeue()
-    f1.isCompleted should be(true)
-    Await.result(f1, Duration.Zero) should equal(s)
+    f1.isCompleted shouldBe true
+    Await.result(f1, Duration.Zero) shouldEqual s
 
     val f2 = fq.dequeue()
-    f2.isCompleted should be(false)
+    f2.isCompleted shouldBe false
 
     fq.enqueue(s)
-    f2.isCompleted should be(true)
-    Await.result(f2, Duration.Zero) should equal(s)
+    f2.isCompleted shouldBe true
+    Await.result(f2, Duration.Zero) shouldEqual s
   }
 
   it should "have the correct promise count and size" in {
     val fq = FutureQueue.empty[String]
     fq should have size 0
-    fq.promiseCount should be(0)
+    fq.promiseCount shouldBe 0
 
     fq += "test"
     fq should have size 1
-    fq.promiseCount should be(0)
+    fq.promiseCount shouldBe 0
 
     fq.dequeue()
     fq should have size 0
-    fq.promiseCount should be(0)
+    fq.promiseCount shouldBe 0
 
     fq.dequeue()
     fq should have size -1
-    fq.promiseCount should be(1)
+    fq.promiseCount shouldBe 1
 
     fq.dequeue()
     fq should have size -2
-    fq.promiseCount should be(2)
+    fq.promiseCount shouldBe 2
   }
 
   it should "drain continually" in {
@@ -156,21 +166,21 @@ class FutureQueueTest extends FlatSpec with Matchers {
     val fq = FutureQueue.empty[String]
     val mq = mutable.Queue.empty[String]
 
-    fq drainContinually {mq += _}
-    fq.promiseCount should be (1)
+    fq drainContinually { mq += _ }
+    fq.promiseCount shouldBe 1
 
     fq += "1"
     executor.executeAll()
     mq should have length 1
-    mq.dequeue() should be ("1")
-    fq.promiseCount should be (1)
+    mq.dequeue() shouldBe "1"
+    fq.promiseCount shouldBe 1
 
     fq ++= Seq("2", "3")
     executor.executeAll()
     mq should have length 2
-    mq.dequeue() should be ("2")
-    mq.dequeue() should be ("3")
-    fq.promiseCount should be (1)
+    mq.dequeue() shouldBe "2"
+    mq.dequeue() shouldBe "3"
+    fq.promiseCount shouldBe 1
   }
 
   it should "drain to another `FutureQueue`" in {
@@ -181,23 +191,23 @@ class FutureQueueTest extends FlatSpec with Matchers {
     val q1 = FutureQueue.empty[String]
     val q2 = FutureQueue.empty[String]
 
-    q1 drainToContinually q2
-    q1.promiseCount should be (1)
+    q1 drainContinuallyTo q2
+    q1.promiseCount shouldBe 1
 
     q1 += "1"
     executor.executeAll()
     q2 should have size 1
-    Await.result(q2.dequeue(), Duration.Zero) should be ("1")
-    q1.promiseCount should be (1)
+    Await.result(q2.dequeue(), Duration.Zero) shouldBe "1"
+    q1.promiseCount shouldBe 1
 
     q1 ++= Seq("2", "3")
     executor.executeAll()
     q2 should have size 2
-    Await.result(q2.dequeue(), Duration.Zero) should be ("2")
-    Await.result(q2.dequeue(), Duration.Zero) should be ("3")
-    q1.promiseCount should be (1)
+    Await.result(q2.dequeue(), Duration.Zero) shouldBe "2"
+    Await.result(q2.dequeue(), Duration.Zero) shouldBe "3"
+    q1.promiseCount shouldBe 1
 
-    an [IllegalArgumentException] should be thrownBy {q2 drainToContinually q2}
+    an [IllegalArgumentException] should be thrownBy { q2 drainContinuallyTo q2 }
   }
 
   it should "evaluate equality properly" in {
@@ -213,22 +223,22 @@ class FutureQueueTest extends FlatSpec with Matchers {
     other.dequeue()
 
     fq should not equal other
-    fq.queued should equal (other.queued)
+    fq.queued shouldEqual other.queued
 
     FutureQueue("") should not equal ""
   }
 
   it should "be represented by a sensible string" in {
-    FutureQueue.empty.toString should include("empty")
+    FutureQueue.empty.toString should include ("empty")
 
     val list = List("some", "test", "strings")
     val s = FutureQueue(list).toString
-    list.foreach(e => s should include(e))
+    list.foreach(e => s should include (e))
 
     val fq = FutureQueue.empty
     fq.dequeue()
     fq.dequeue()
-    fq.toString should include(fq.promiseCount.toString)
+    fq.toString should include (fq.promiseCount.toString)
   }
 }
 
@@ -236,8 +246,8 @@ private object FutureQueueTest extends Matchers {
 
   implicit final class RichFutureQueue[A](private val a: FutureQueue[A]) extends AnyVal {
     def shouldBeEquivalentTo(b: FutureQueue[_]): Unit = {
-      a should equal(b)
-      a.hashCode() should equal(b.hashCode())
+      a shouldEqual b
+      a.hashCode() shouldEqual b.hashCode()
     }
   }
 
