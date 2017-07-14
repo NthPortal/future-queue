@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicReference
 import com.nthportal.collection.concurrent.FutureQueue._
 import com.nthportal.collection.concurrent._future_queue._
 
-import scala.collection.GenSeq
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
@@ -52,50 +51,64 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
   def queued: Queue[A] = contents.elems
 
   /**
-    * Appends an element to this queue.
+    * Append an element to this queue.
     *
     * @param a the element to append
+    * @return this queue
     */
-  def enqueue(a: A): Unit = {
+  def +=(a: A): FutureQueue.this.type = {
     val cs = atomic.getAndUpdate(unaryOp(c => {
       if (c.promises.nonEmpty) c.copy(promises = c.promises.tail)
       else c.copy(elems = c.elems :+ a)
     }))
 
     if (cs.promises.nonEmpty) cs.promises.head.success(a)
+
+    this
   }
 
   /**
-    * Appends elements to this queue.
+    * Append elements to this queue.
     *
     * @param xs the elements to append
+    * @return this queue
     */
-  def enqueue[B <: A](xs: TraversableOnce[B]): Unit = enqueueImpl(xs.to[GenSeq])
-
-  private def enqueueImpl[B <: A](xs: GenSeq[B]): Unit = {
-    val cs = atomic.getAndUpdate(unaryOp(c => {
-      c.copy(elems = c.elems ++ xs.drop(c.promises.length), promises = c.promises.drop(xs.length))
-    }))
-
-    cs.promises.zip(xs)
-      .map { case (p, e) => p.success(e) }
-  }
+  def ++=(xs: TraversableOnce[A]): FutureQueue.this.type = {enqueue(xs.toSeq: _*); this}
 
   /**
-    * Appends an element to this queue.
+    * Append an element to this queue.
     *
     * @param a the element to append
-    * @return this queue
     */
-  def +=(a: A): FutureQueue[A] = {enqueue(a); this}
+  def enqueue(a: A): Unit = this += a
 
   /**
-    * Appends elements to this queue.
+    * Append elements to this queue.
     *
     * @param xs the elements to append
-    * @return this queue
     */
-  def ++=[B <: A](xs: TraversableOnce[B]): FutureQueue[A] = {enqueue(xs); this}
+  def enqueue(xs: A*): Unit = {
+    val len = xs.length
+    if (len == 1) this += xs.head
+    else if (len > 1) {
+      val cs = atomic.getAndUpdate(unaryOp(c => {
+        c.copy(
+          elems = c.elems ++ xs.view.drop(c.promises.length),
+          promises = c.promises.drop(len))
+      }))
+
+      cs.promises.zip(xs)
+        .map { case (p, e) => p.success(e) }
+    }
+  }
+
+  /**
+    * Append elements to this queue.
+    *
+    * @param xs the elements to append
+    */
+  @deprecated("use `enqueue(A*)` or `++=` instead", since = "1.2.0")
+  def enqueue(xs: TraversableOnce[A]): Unit = enqueue(xs.toSeq: _*)
 
   /**
     * Returns a [[Future]] containing the next element, and removes that element
@@ -124,9 +137,9 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     * specified function.
     *
     * One SHOULD NOT dequeue elements from this queue after calling this method or
-    * [[drainToContinually]]; doing so will result in only some elements being
+    * [[drainContinuallyTo]]; doing so will result in only some elements being
     * applied to the specified function, in an inconsistent fashion. For the same
-    * reason, neither this method nor [[drainToContinually]] (nor
+    * reason, neither this method nor [[drainContinuallyTo]] (nor
     * [[FutureQueue.aggregate]] with `this` as an argument) should be invoked after
     * calling this method.
     *
@@ -163,10 +176,16 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
     * @throws IllegalArgumentException if the specified `FutureQueue` is `this`
     */
   @throws[IllegalArgumentException]
-  def drainToContinually[B >: A](other: FutureQueue[B])(implicit executor: ExecutionContext): Unit = {
+  def drainContinuallyTo[B >: A](other: FutureQueue[B])(implicit executor: ExecutionContext): Unit = {
     require(this ne other, "Cannot drain a queue to itself")
     drainContinually(other.enqueue)
   }
+
+  /**
+    * @see [[drainContinuallyTo]]
+    */
+  @deprecated("use `drainContinuallyTo` instead", since = "1.2.0")
+  def drainToContinually[B >: A](other: FutureQueue[B])(implicit executor: ExecutionContext): Unit = drainContinuallyTo(other)
 
   override def hashCode(): Int = contents.hashCode()
 
@@ -256,13 +275,13 @@ object FutureQueue {
   /**
     * Creates a new `FutureQueue` ('aggregate queue') to which all of the
     * specified `FutureQueue`s ('input queues') are
-    * [[FutureQueue.drainToContinually drained]].
+    * [[FutureQueue.drainContinuallyTo drained]].
     *
     * Elements added to the input queues are dequeued from them and enqueued
     * to the aggregate queue. Consequently, one SHOULD NOT invoke
     * [[FutureQueue.dequeue dequeue]],
     * [[FutureQueue.drainContinually drainContinually]] or
-    * [[FutureQueue.drainToContinually drainToContinually]] on the input queues,
+    * [[FutureQueue.drainContinuallyTo drainToContinually]] on the input queues,
     * or this method with any of the input queues as an argument, after calling
     * this method; doing so will result in only some elements being enqueued
     * to the aggregate queue, in an inconsistent fashion.
@@ -281,7 +300,7 @@ object FutureQueue {
     */
   def aggregate[A](queues: FutureQueue[_ <: A]*)(implicit executor: ExecutionContext): FutureQueue[A] = {
     val res = empty[A]
-    queues.foreach(_.drainToContinually(res))
+    queues.foreach(_.drainContinuallyTo(res))
     res
   }
 }

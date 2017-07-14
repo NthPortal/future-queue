@@ -2,13 +2,14 @@ organization := "com.nthportal"
 name := "future-queue"
 description := "A queue for Scala which returns Futures for elements which may not have been enqueued yet."
 
-val rawVersion = "1.1.0"
+val rawVersion = "1.2.0"
 isSnapshot := true
-version := rawVersion + {if (isSnapshot.value) "-SNAPSHOT" else ""}
+version := rawVersion + { if (isSnapshot.value) "-SNAPSHOT" else "" }
 
 scalaVersion := "2.12.1"
 crossScalaVersions := Seq(
   "2.11.8",
+  "2.11.11",
   "2.12.0",
   "2.12.1"
 )
@@ -18,12 +19,19 @@ libraryDependencies ++= Seq(
   "com.nthportal" %% "testing-utils" % "1.+" % Test
 )
 
+scalacOptions ++= {
+  if (isSnapshot.value) Seq()
+  else scalaVersion.value split '.' map { _.toInt } match {
+    case Array(2, 11, _) => Seq("-optimize")
+    case Array(2, 12, patch) if patch <= 2 => Seq("-opt:l:project")
+    case Array(2, 12, patch) if patch > 2 => Seq("-opt:l:inline")
+    case _ => Seq()
+  }
+}
+
 publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+  if (isSnapshot.value) Some("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
+  else None
 }
 
 publishMavenStyle := true
