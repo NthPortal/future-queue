@@ -12,7 +12,7 @@ A queue for Scala which returns Futures for elements which may not have been enq
 ### SBT (Scala 2.11 and 2.12)
 
 ```sbt
-"com.nthportal" %% "future-queue" % "1.1.0"
+"com.nthportal" %% "future-queue" % "1.2.0"
 ```
 
 ### Maven
@@ -23,7 +23,7 @@ A queue for Scala which returns Futures for elements which may not have been enq
 <dependency>
   <groupId>com.nthportal</groupId>
   <artifactId>future-queue_2.12</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
@@ -33,7 +33,7 @@ A queue for Scala which returns Futures for elements which may not have been enq
 <dependency>
   <groupId>com.nthportal</groupId>
   <artifactId>future-queue_2.11</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
