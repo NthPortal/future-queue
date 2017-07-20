@@ -206,6 +206,7 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
 
   override def toString: String = s"FutureQueue($contentsToString)"
 
+  @inline
   private def contentsToString: String = {
     val c = contents
     if (c.promises.nonEmpty) s"promised: ${c.promises.length}"
