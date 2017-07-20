@@ -206,6 +206,7 @@ final class FutureQueue[A] private(initialContents: Contents[A]) {
 
   override def toString: String = s"FutureQueue($contentsToString)"
 
+  @inline
   private def contentsToString: String = {
     val c = contents
     if (c.promises.nonEmpty) s"promised: ${c.promises.length}"
@@ -281,7 +282,7 @@ object FutureQueue {
     * to the aggregate queue. Consequently, one SHOULD NOT invoke
     * [[FutureQueue.dequeue dequeue]],
     * [[FutureQueue.drainContinually drainContinually]] or
-    * [[FutureQueue.drainContinuallyTo drainToContinually]] on the input queues,
+    * [[FutureQueue.drainContinuallyTo drainContinuallyTo]] on the input queues,
     * or this method with any of the input queues as an argument, after calling
     * this method; doing so will result in only some elements being enqueued
     * to the aggregate queue, in an inconsistent fashion.
